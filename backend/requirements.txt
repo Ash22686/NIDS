@@ -1,0 +1,8 @@
+Flask
+pandas
+numpy
+scikit-learn  # Or the library your model requires (e.g., tensorflow, pytorch)
+flask-cors 
+Flask-SocketIO 
+scapy 
+eventlet
