@@ -6,3 +6,4 @@ flask-cors
 Flask-SocketIO 
 scapy 
 eventlet
+tensorflow

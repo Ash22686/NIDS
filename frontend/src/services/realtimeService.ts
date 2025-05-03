@@ -6,21 +6,24 @@ const SOCKET_SERVER_URL = "http://localhost:5000"; // Your Flask-SocketIO server
 
 let socket: Socket | null = null;
 
+// --- UPDATED INTERFACE ---
 export interface RealtimeResult {
-  prediction: string;
+  prediction: string;          // Prediction from the primary signature model
+  anomaly_prediction: string | null; // Prediction from the secondary anomaly model (or null/string indicator)
   packet_summary: string;
   timestamp: number;
 }
+// -------------------------
 
 interface ServiceStatusListeners {
   onConnect?: () => void;
   onDisconnect?: () => void;
   onConnectError?: (err: Error) => void;
-  onServerError?: (data: { error: string }) => void; // Specific server errors on connect
+  onServerError?: (data: { error: string }) => void;
 }
 
 interface CaptureListeners {
-  onCaptureResult?: (data: RealtimeResult) => void;
+  onCaptureResult?: (data: RealtimeResult) => void; // Type uses the updated interface
   onCaptureError?: (data: { error: string }) => void;
   onCaptureStarted?: (data: { message: string }) => void;
   onCaptureStopped?: (data: { message: string }) => void;
@@ -37,11 +40,11 @@ export const connectRealtime = (
 
   console.log("Attempting to connect to Socket.IO server...");
   socket = io(SOCKET_SERVER_URL, {
-    reconnectionAttempts: 3, // Limit reconnection attempts
-    timeout: 5000, // Connection timeout
+    reconnectionAttempts: 3,
+    timeout: 5000,
   });
 
-  // --- Service Status Listeners ---
+  // --- Service Status Listeners (No changes needed here) ---
   socket.on("connect", () => {
     console.log("Socket connected:", socket?.id);
     toast.success("Connected to real-time analysis server.");
@@ -50,14 +53,12 @@ export const connectRealtime = (
 
   socket.on("disconnect", (reason) => {
     console.log("Socket disconnected:", reason);
-    // Only show toast if it wasn't a manual disconnect
     if (reason !== "io client disconnect") {
       toast.warning("Disconnected from real-time server.");
     }
     serviceListeners.onDisconnect?.();
-    // Ensure socket instance is cleaned up on final disconnect
     if (reason === "io server disconnect" || reason === "transport close") {
-      socket?.removeAllListeners(); // Clean up listeners
+      socket?.removeAllListeners();
       socket = null;
     }
   });
@@ -66,7 +67,7 @@ export const connectRealtime = (
     console.error("Socket connection error:", err);
     toast.error(`Connection error: ${err.message}`);
     serviceListeners.onConnectError?.(err);
-    socket?.disconnect(); // Force disconnect after error
+    socket?.disconnect();
     socket = null;
   });
 
@@ -77,8 +78,9 @@ export const connectRealtime = (
   });
 
   // --- Capture Event Listeners ---
+  // The 'capture_result' listener now expects data matching the updated RealtimeResult interface
   socket.on("capture_result", (data: RealtimeResult) => {
-    // console.log('Capture Result:', data); // Can be very verbose
+    // console.log('Capture Result:', data); // Includes both predictions now
     captureListeners.onCaptureResult?.(data);
   });
 
@@ -103,11 +105,14 @@ export const connectRealtime = (
   return socket;
 };
 
+// --- disconnectRealtime, startRealtimeCapture, stopRealtimeCapture, isRealtimeConnected ---
+// --- remain unchanged ---
+
 export const disconnectRealtime = () => {
   if (socket?.connected) {
     console.log("Disconnecting socket...");
     socket.disconnect();
-    socket = null; // Clear the instance
+    socket = null;
     toast.info("Disconnected from real-time analysis.");
   } else {
     console.log("Socket already disconnected or not initialized.");
@@ -116,9 +121,7 @@ export const disconnectRealtime = () => {
 
 export const startRealtimeCapture = (interfaceName?: string | null) => {
   if (socket?.connected) {
-    console.log(
-      `Sending start_capture signal for interface: ${interfaceName || "all"}`
-    );
+    console.log(`Sending start_capture signal for interface: ${interfaceName || "all"}`);
     socket.emit("start_capture", { interface: interfaceName });
   } else {
     console.error("Socket not connected. Cannot start capture.");
@@ -132,11 +135,9 @@ export const stopRealtimeCapture = () => {
     socket.emit("stop_capture");
   } else {
     console.error("Socket not connected. Cannot stop capture.");
-    // No toast here as it might be called during disconnect sequence
   }
 };
 
-// Function to check connection status
 export const isRealtimeConnected = (): boolean => {
   return socket?.connected ?? false;
 };
